@@ -74,7 +74,7 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
                 var requestName = command.GetString();
                 var requestObject = @object.TryGetProperty("arguments", out var body)
                     ? body.Clone()
-                    : JsonSerializer.SerializeToElement(new { });
+                    : EmptyObject();
                 if (RequestNames.Cancel == requestName && requestObject.ValueKind == JsonValueKind.Object)
                 {
                     // DAP is really weird... the cancellation operation mixes request and progress cancellation.
@@ -84,14 +84,14 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
                     {
                         yield return new Notification(
                             JsonRpcNames.CancelRequest,
-                            JsonSerializer.SerializeToElement(new Dictionary<string, JsonElement> { ["id"] = requestId.Clone() })
+                            ToElement(new JsonObject { ["id"] = JsonNode.Parse(requestId.GetRawText()) })
                         ) {
                             TraceState = traceState,
                             TraceParent = traceParent
                         };
                         var requestNode = JsonNode.Parse(requestObject.GetRawText())!.AsObject();
                         requestNode.Remove("requestId");
-                        requestObject = JsonSerializer.SerializeToElement(requestNode);
+                        requestObject = ToElement(requestNode);
                     }
                     else
                     {
@@ -132,7 +132,7 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
                     yield break;
                 }
 
-                var bodyValue = @object.TryGetProperty("body", out var body) ? body.Clone() : JsonSerializer.SerializeToElement(new { });
+                var bodyValue = @object.TryGetProperty("body", out var body) ? body.Clone() : EmptyObject();
 
                 var requestSequence = GetInt64(requestSeq);
                 var successValue = success.GetBoolean();
@@ -152,6 +152,15 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
             }
 
             throw new NotSupportedException($"Message type {messageType} is not supported");
+        }
+
+        // JsonSerializer.SerializeToElement needs reflection metadata that NativeAOT disables.
+        private static JsonElement EmptyObject() => ToElement(new JsonObject());
+
+        private static JsonElement ToElement(JsonNode node)
+        {
+            using var document = JsonDocument.Parse(node.ToJsonString());
+            return document.RootElement.Clone();
         }
 
         public void Initialized() => _initialized = true;

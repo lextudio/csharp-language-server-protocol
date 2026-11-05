@@ -48,6 +48,10 @@ using var server = DebugAdapterServer.Create(o => o.WithInput(input.Reader).With
 })).OnScopes((ScopesArguments request, CancellationToken token) => Task.FromResult(new ScopesResponse {
     Scopes = new[] { new Scope { Name = "Locals", VariablesReference = 42, Expensive = false } }
 })).OnNext((NextArguments request, CancellationToken token) => Task.FromResult(new NextResponse()))
+.OnJsonRequest("noArguments", (JsonElement request, CancellationToken token) => {
+    using var document = JsonDocument.Parse("{\"result\":\"none\"}");
+    return Task.FromResult(document.RootElement.Clone());
+})
 .OnJsonRequest("customProbe", (JsonElement request, CancellationToken token) => {
     if (request.GetProperty("message").GetString() != "中文") throw new InvalidOperationException("Custom request was not preserved.");
     using var document = JsonDocument.Parse("{\"result\":\"ok\"}");
@@ -115,6 +119,8 @@ await RequestAndCheckAsync("{\"seq\":8,\"type\":\"request\",\"command\":\"stackT
 await RequestAndCheckAsync("{\"seq\":9,\"type\":\"request\",\"command\":\"scopes\",\"arguments\":{\"frameId\":7}}", 9, "\"variablesReference\":42");
 await RequestAndCheckAsync("{\"seq\":10,\"type\":\"request\",\"command\":\"next\",\"arguments\":{\"threadId\":42,\"granularity\":\"statement\"}}", 10, "\"success\":true");
 await RequestAndCheckAsync("{\"seq\":11,\"type\":\"request\",\"command\":\"customProbe\",\"arguments\":{\"message\":\"中文\"}}", 11, "\"result\":\"ok\"");
+// A request without "arguments" (such as configurationDone) must not need reflection-based serialization.
+await RequestAndCheckAsync("{\"seq\":12,\"type\":\"request\",\"command\":\"noArguments\"}", 12, "\"result\":\"none\"");
 await input.Writer.CompleteAsync();
 
 async Task RequestAndCheckAsync(string request, int id, string expected, bool success = true)
