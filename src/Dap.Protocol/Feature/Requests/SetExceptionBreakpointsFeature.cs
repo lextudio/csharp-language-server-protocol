@@ -90,7 +90,7 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
         /// unhandled: breaks when exception unhandled,
         /// userUnhandled: breaks if the exception is not handled by user code.
         /// </summary>
-        [JsonConverter(typeof(JsonStringEnumConverter))]
+        [JsonConverter(typeof(JsonStringEnumConverter<ExceptionBreakMode>))]
         public enum ExceptionBreakMode
         {
             Never, Always, Unhandled, UserUnhandled

@@ -28,7 +28,7 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
             public JsonElement? Restart { get; init; }
 
             [JsonExtensionData]
-            public IDictionary<string, object> ExtensionData { get; init; } = new Dictionary<string, object>();
+            public IDictionary<string, object> ExtensionData { get; set; } = new Dictionary<string, object>();
         }
 
         public record AttachResponse;

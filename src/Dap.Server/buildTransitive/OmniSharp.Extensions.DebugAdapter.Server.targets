@@ -1,0 +1,10 @@
+<Project>
+  <!-- DryIoc and handler discovery still inspect the library's own types at runtime.
+       Preserve those assemblies when a consuming application is compiled with NativeAOT. -->
+  <ItemGroup Condition="'$(PublishAot)' == 'true'">
+    <TrimmerRootAssembly Include="OmniSharp.Extensions.JsonRpc" />
+    <TrimmerRootAssembly Include="OmniSharp.Extensions.DebugAdapter" />
+    <TrimmerRootAssembly Include="OmniSharp.Extensions.DebugAdapter.Shared" />
+    <TrimmerRootAssembly Include="OmniSharp.Extensions.DebugAdapter.Server" />
+  </ItemGroup>
+</Project>

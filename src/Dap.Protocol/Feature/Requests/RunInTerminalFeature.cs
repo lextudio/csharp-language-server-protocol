@@ -62,7 +62,7 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
             public long? ShellProcessId { get; init; }
         }
 
-        [JsonConverter(typeof(JsonStringEnumConverter))]
+        [JsonConverter(typeof(JsonStringEnumConverter<RunInTerminalArgumentsKind>))]
         public enum RunInTerminalArgumentsKind
         {
             Integrated,

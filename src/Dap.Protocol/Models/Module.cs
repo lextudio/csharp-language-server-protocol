@@ -80,6 +80,6 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol.Models
         /// Allows additional data to be displayed
         /// </summary>
         [JsonExtensionData]
-        public Dictionary<string, object> ExtensionData { get; init; } = new Dictionary<string, object>();
+        public Dictionary<string, object> ExtensionData { get; set; } = new Dictionary<string, object>();
     }
 }

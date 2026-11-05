@@ -31,13 +31,12 @@ namespace OmniSharp.Extensions.DebugAdapter.Shared
             container.RegisterMany<DapReceiver>(nonPublicServiceTypes: true, reuse: Reuse.Singleton);
             container.RegisterMany<DapOutputFilter>(nonPublicServiceTypes: true, reuse: Reuse.Singleton);
             container.RegisterMany<DebugAdapterRequestRouter>(Reuse.Singleton);
-            container.RegisterMany<DebugAdapterHandlerCollection>(nonPublicServiceTypes: true, reuse: Reuse.Singleton);
-            container.RegisterInitializer<DebugAdapterHandlerCollection>(
-                (manager, context) => {
-                    var descriptions = context.Resolve<IJsonRpcHandlerCollection>();
-                    descriptions.Populate(context, manager);
-                }
-            );
+            container.RegisterDelegate(context => {
+                var manager = new DebugAdapterHandlerCollection(context, context.Resolve<IHandlerTypeDescriptorProvider<IHandlerTypeDescriptor?>>());
+                context.Resolve<IJsonRpcHandlerCollection>().Populate(context, manager);
+                return manager;
+            }, Reuse.Singleton);
+            container.RegisterDelegate<IHandlersManager>(context => context.Resolve<DebugAdapterHandlerCollection>(), Reuse.Singleton);
             container.RegisterMany<DapResponseRouter>(Reuse.Singleton);
 
             return container;

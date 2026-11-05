@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -204,6 +205,11 @@ namespace OmniSharp.Extensions.JsonRpc
 
         internal static Task HandleRequest(IRequestDispatcher dispatcher, IHandlerDescriptor descriptor, object @params, CancellationToken token)
         {
+            // The raw JSON request path has a value-type response. Construct its closed
+            // dispatch method at build time instead of relying on MakeGenericMethod at runtime.
+            if (@params is DelegatingRequest<JsonElement> jsonRequest && descriptor.Response == typeof(JsonElement))
+                return dispatcher.Send<DelegatingRequest<JsonElement>, JsonElement>(jsonRequest, token);
+
             if (!descriptor.HasReturnType)
             {
                 return (Task) SendRequestUnit

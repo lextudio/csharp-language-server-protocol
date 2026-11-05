@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using DryIoc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -12,8 +13,8 @@ namespace OmniSharp.Extensions.JsonRpc
             var container = new Container()
                            .WithDependencyInjectionAdapter()
                            .With(
-                                rules =>
-                                    rules
+                                rules => {
+                                    var configured = rules
                                        .WithTrackingDisposableTransients()
                                        .WithoutThrowOnRegisteringDisposableTransient()
                                        .WithFactorySelector(Rules.SelectLastRegisteredFactory())
@@ -21,7 +22,13 @@ namespace OmniSharp.Extensions.JsonRpc
                                        .With(FactoryMethod.ConstructorWithResolvableArgumentsIncludingNonPublic)
                                         //.WithDefaultReuse(Reuse.Singleton)
                                        .WithDefaultReuse(Reuse.Scoped)
-                                       .WithConcreteTypeDynamicRegistrations((req, _) => typeof(IJsonRpcHandler).IsAssignableFrom(req), Reuse.Transient)
+                                       .WithConcreteTypeDynamicRegistrations((req, _) => typeof(IJsonRpcHandler).IsAssignableFrom(req), Reuse.Transient);
+#if NETSTANDARD2_0
+                                    return configured;
+#else
+                                    return RuntimeFeature.IsDynamicCodeSupported ? configured : configured.WithUseInterpretation();
+#endif
+                                }
                             );
 
             var outerLoggerFactory = outerServiceProvider?.GetService<ILoggerFactory>();

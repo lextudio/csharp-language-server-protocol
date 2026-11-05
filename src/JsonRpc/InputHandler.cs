@@ -382,14 +382,22 @@ namespace OmniSharp.Extensions.JsonRpc
                         }
                     } while (!buffer.IsEmpty && dataParsed);
 
+                    var bufferIsEmpty = buffer.IsEmpty;
                     _pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                    // The sequence is no longer valid after AdvanceTo; don't inspect it from
+                    // the exception handler if a later read fails during shutdown.
+                    buffer = default;
 
                     // Stop reading if there's no more data coming.
-                    if (result.IsCompleted && buffer.IsEmpty)
+                    if (result.IsCompleted && bufferIsEmpty)
                     {
                         break;
                     }
                 } while (!cancellationToken.IsCancellationRequested);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Stopping a connection cancels the pending read and is not an input error.
             }
             catch (Exception e)
             {

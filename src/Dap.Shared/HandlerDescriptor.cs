@@ -23,11 +23,7 @@ namespace OmniSharp.Extensions.DebugAdapter.Shared
             HandlerType = handlerInterface;
             Params = @params;
             Response = response;
-            HasReturnType = HandlerType.GetInterfaces().Any(
-                @interface =>
-                    @interface.IsGenericType &&
-                    typeof(IRequestHandler<,>).IsAssignableFrom(@interface.GetGenericTypeDefinition())
-            );
+            HasReturnType = response != null && response != typeof(Unit);
 
             IsDelegatingHandler = @params?.IsGenericType == true &&
                                   (

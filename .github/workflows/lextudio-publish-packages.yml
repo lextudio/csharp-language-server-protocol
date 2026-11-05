@@ -1,0 +1,53 @@
+name: Publish lextudio DAP packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.403
+      - name: Install NativeAOT toolchain
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev libssl-dev libbrotli-dev
+      - name: Test DAP and JSON-RPC
+        run: |
+          dotnet test test/Dap.Tests/Dap.Tests.csproj -c Debug -p:CollectCoverage=false
+          dotnet test test/JsonRpc.Tests/JsonRpc.Tests.csproj -c Debug -p:CollectCoverage=false
+      - name: Pack an immutable version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="1.0.0-lextudio.${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}"
+          echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
+          mkdir -p artifacts/packages
+          for project in src/JsonRpc.Generators/JsonRpc.Generators.csproj src/JsonRpc/JsonRpc.csproj src/Dap.Protocol/Dap.Protocol.csproj src/Dap.Shared/Dap.Shared.csproj src/Dap.Server/Dap.Server.csproj; do
+            dotnet pack "$project" -c Release "-p:Version=$version" "-p:PackageVersion=$version" -p:PackageIcon= -o artifacts/packages
+          done
+          for package in artifacts/packages/*.nupkg; do
+            if unzip -p "$package" '*.nuspec' | grep -i 'dependency id="MediatR"' >/dev/null; then echo "MediatR found in $package" >&2; exit 1; fi
+          done
+      - name: Verify the packed NativeAOT consumer
+        run: test/Dap.NativeAot.Smoke/verify-package.sh artifacts/packages "$PACKAGE_VERSION" linux-x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dap-packages
+          path: artifacts/packages/*.nupkg
+      - name: Publish to GitHub Packages
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for package in artifacts/packages/*.nupkg; do
+            dotnet nuget push "$package" --source https://nuget.pkg.github.com/lextudio/index.json --api-key "$GH_PACKAGES_TOKEN"
+          done

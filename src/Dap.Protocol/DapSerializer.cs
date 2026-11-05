@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -30,8 +31,37 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
             var options = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+#if NETSTANDARD2_0
                 TypeInfoResolver = resolver
+#else
+                TypeInfoResolver = RuntimeFeature.IsDynamicCodeSupported
+                    ? resolver
+                    : JsonTypeInfoResolver.Combine(DapJsonSerializerContext.Default.WithAddedModifier(ConfigureTypeInfo), resolver)
+#endif
             };
+#if !NETSTANDARD2_0
+            if (!RuntimeFeature.IsDynamicCodeSupported)
+            {
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.BreakpointEventReason>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.BreakpointEventReason(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.LoadedSourceReason>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.LoadedSourceReason(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.ModuleEventReason>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.ModuleEventReason(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.OutputEventCategory>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.OutputEventCategory(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.OutputEventGroup>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.OutputEventGroup(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.ProcessEventStartMethod>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.ProcessEventStartMethod(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.StoppedEventReason>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.StoppedEventReason(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.ThreadEventReason>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Events.ThreadEventReason(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.ChecksumAlgorithm>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.ChecksumAlgorithm(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.ColumnDescriptorType>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.ColumnDescriptorType(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.InvalidatedAreas>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.InvalidatedAreas(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.PathFormat>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.PathFormat(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.StackFramePresentationHint>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.StackFramePresentationHint(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.VariableAttributes>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.VariableAttributes(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.VariablePresentationHintKind>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.VariablePresentationHintKind(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.VariableVisibility>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Models.VariableVisibility(value)));
+                options.Converters.Add(new AotStringEnumConverter<global::OmniSharp.Extensions.DebugAdapter.Protocol.Requests.EvaluateArgumentsContext>(value => new global::OmniSharp.Extensions.DebugAdapter.Protocol.Requests.EvaluateArgumentsContext(value)));
+            }
+#endif
+            options.Converters.Add(new ContainerJsonConverterFactory());
             options.Converters.Add(new NumberStringConverter());
             options.Converters.Add(new ProgressTokenConverter());
             options.Converters.Add(new InferredObjectConverter());
@@ -42,7 +72,7 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
         {
             foreach (var property in typeInfo.Properties)
             {
-                if (typeInfo.Type.Name.EndsWith("Capabilities")
+                if (typeof(Capabilities).IsAssignableFrom(typeInfo.Type) || typeInfo.Type.Name.EndsWith("Capabilities")
                  || property.AttributeProvider?.GetCustomAttributes(typeof(OptionalAttribute), true).Any() == true)
                 {
                     property.ShouldSerialize = (_, value) => !IsDefaultValue(value, property.PropertyType);

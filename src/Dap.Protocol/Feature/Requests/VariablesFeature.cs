@@ -57,7 +57,7 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
             public Container<Variable>? Variables { get; init; }
         }
 
-        [JsonConverter(typeof(JsonStringEnumConverter))]
+        [JsonConverter(typeof(JsonStringEnumConverter<VariablesArgumentsFilter>))]
         public enum VariablesArgumentsFilter
         {
             Indexed, Named

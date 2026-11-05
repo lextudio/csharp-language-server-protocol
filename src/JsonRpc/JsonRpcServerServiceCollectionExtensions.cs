@@ -76,20 +76,16 @@ namespace OmniSharp.Extensions.JsonRpc
                 reuse: Reuse.Singleton
             );
 
-            container.RegisterInstance(options.Handlers);
-            container.RegisterInitializer<IJsonRpcHandlerCollection>(
-                (collection, context) => {
-                    foreach (var description in context
-                                               .ResolveMany<JsonRpcHandlerDescription>()
-                                               .Concat(
-                                                    context
-                                                       .ResolveMany<IJsonRpcHandler>().Select(_ => JsonRpcHandlerDescription.Infer(_))
-                                                ))
-                    {
-                        collection.Add(description);
-                    }
+            container.RegisterDelegate<IJsonRpcHandlerCollection>(context => {
+                var collection = options.Handlers;
+                foreach (var description in context
+                                           .ResolveMany<JsonRpcHandlerDescription>()
+                                           .Concat(context.ResolveMany<IJsonRpcHandler>().Select(_ => JsonRpcHandlerDescription.Infer(_))))
+                {
+                    collection.Add(description);
                 }
-            );
+                return collection;
+            }, Reuse.Singleton);
             container.RegisterMany<InstanceHasStarted>(nonPublicServiceTypes: true, reuse: Reuse.Singleton);
 
             return container.AddJsonRpcDispatcher();
