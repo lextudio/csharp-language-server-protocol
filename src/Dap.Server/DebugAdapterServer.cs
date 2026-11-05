@@ -219,6 +219,7 @@ namespace OmniSharp.Extensions.DebugAdapter.Server
                 SupportsLoadedSourcesRequest = _capabilities.SupportsLoadedSourcesRequest || _collection.ContainsHandler(typeof(ILoadedSourcesHandler)),
                 SupportsReadMemoryRequest = _capabilities.SupportsReadMemoryRequest || _collection.ContainsHandler(typeof(IReadMemoryHandler)),
                 SupportsTerminateThreadsRequest = _capabilities.SupportsTerminateThreadsRequest || _collection.ContainsHandler(typeof(ITerminateThreadsHandler)),
+                SupportsSingleThreadExecutionRequests = _capabilities.SupportsSingleThreadExecutionRequests,
                 SupportsValueFormattingOptions = _capabilities.SupportsValueFormattingOptions,
                 SupportsDelayedStackTraceLoading = _capabilities.SupportsDelayedStackTraceLoading,
                 SupportsStepInTargetsRequest = _capabilities.SupportsStepInTargetsRequest || _collection.ContainsHandler(typeof(IStepInTargetsHandler)),

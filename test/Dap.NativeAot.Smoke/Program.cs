@@ -29,7 +29,7 @@ internal static class Program
 var input = new Pipe();
 var output = new Pipe();
 Console.WriteLine("creating server");
-using var server = DebugAdapterServer.Create(o => o.WithInput(input.Reader).WithOutput(output.Writer).WithLoggerFactory(new ProbeLoggerFactory()).WithUnhandledExceptionHandler(ex => Console.Error.WriteLine("UNHANDLED " + ex)).OnAttach((AttachRequestArguments request, CancellationToken token) => {
+using var server = DebugAdapterServer.Create(o => { o.Capabilities.SupportsSingleThreadExecutionRequests = true; o.WithInput(input.Reader).WithOutput(output.Writer).WithLoggerFactory(new ProbeLoggerFactory()).WithUnhandledExceptionHandler(ex => Console.Error.WriteLine("UNHANDLED " + ex)).OnAttach((AttachRequestArguments request, CancellationToken token) => {
     if (!request.ExtensionData.TryGetValue("sessionToken", out var value) || value.ToString() != "安全") throw new InvalidOperationException("The session token was not preserved.");
     return Task.FromResult(new AttachResponse());
 }).OnSetBreakpoints((SetBreakpointsArguments request, CancellationToken token) => {
@@ -56,7 +56,7 @@ using var server = DebugAdapterServer.Create(o => o.WithInput(input.Reader).With
     if (request.GetProperty("message").GetString() != "中文") throw new InvalidOperationException("Custom request was not preserved.");
     using var document = JsonDocument.Parse("{\"result\":\"ok\"}");
     return Task.FromResult(document.RootElement.Clone());
-}));
+}); });
 Console.WriteLine("server created");
 using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 var initialization = server.Initialize(timeout.Token);
@@ -72,6 +72,7 @@ while (!response.Contains("\"success\":true"))
     output.Reader.AdvanceTo(result.Buffer.End);
 }
 Console.WriteLine(response);
+if (!response.Contains("\"supportsSingleThreadExecutionRequests\":true")) throw new Exception("The singleThread capability was not advertised.");
 Console.WriteLine("initialize successful");
 const string attach = "{\"seq\":2,\"type\":\"request\",\"command\":\"attach\",\"arguments\":{\"sessionToken\":\"安全\"}}";
 body = Encoding.UTF8.GetBytes(attach);

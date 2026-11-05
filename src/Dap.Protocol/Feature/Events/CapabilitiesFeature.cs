@@ -163,6 +163,13 @@ namespace OmniSharp.Extensions.DebugAdapter.Protocol
             public bool SupportsTerminateThreadsRequest { get; set; }
 
             /// <summary>
+            /// The debug adapter supports the 'singleThread' property on the execution requests
+            /// ('continue', 'next', 'stepIn', 'stepOut', 'reverseContinue', 'stepBack').
+            /// </summary>
+            [Optional]
+            public bool SupportsSingleThreadExecutionRequests { get; set; }
+
+            /// <summary>
             /// The debug adapter supports the 'setExpression' request.
             /// </summary>
             [Optional]
