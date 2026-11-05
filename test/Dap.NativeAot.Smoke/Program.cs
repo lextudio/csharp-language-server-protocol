@@ -48,6 +48,8 @@ using var server = DebugAdapterServer.Create(o => { o.Capabilities.SupportsSingl
 })).OnScopes((ScopesArguments request, CancellationToken token) => Task.FromResult(new ScopesResponse {
     Scopes = new[] { new Scope { Name = "Locals", VariablesReference = 42, Expensive = false } }
 })).OnNext((NextArguments request, CancellationToken token) => Task.FromResult(new NextResponse()))
+.OnJsonRequest("failing", (JsonElement request, CancellationToken token) =>
+    throw new RpcErrorException(OmniSharp.Extensions.JsonRpc.Server.ErrorCodes.InternalError, "InvalidOperationException", "clean failure"))
 .OnJsonRequest("noArguments", (JsonElement request, CancellationToken token) => {
     using var document = JsonDocument.Parse("{\"result\":\"none\"}");
     return Task.FromResult(document.RootElement.Clone());
@@ -122,9 +124,11 @@ await RequestAndCheckAsync("{\"seq\":10,\"type\":\"request\",\"command\":\"next\
 await RequestAndCheckAsync("{\"seq\":11,\"type\":\"request\",\"command\":\"customProbe\",\"arguments\":{\"message\":\"中文\"}}", 11, "\"result\":\"ok\"");
 // A request without "arguments" (such as configurationDone) must not need reflection-based serialization.
 await RequestAndCheckAsync("{\"seq\":12,\"type\":\"request\",\"command\":\"noArguments\"}", 12, "\"result\":\"none\"");
+// A handler failure must reach the client as the handler's own message (not the library's "Internal Error - <exception.ToString()>" text with the call stack), also under NativeAOT.
+await RequestAndCheckAsync("{\"seq\":13,\"type\":\"request\",\"command\":\"failing\",\"arguments\":{}}", 13, "clean failure", false, "Internal Error");
 await input.Writer.CompleteAsync();
 
-async Task RequestAndCheckAsync(string request, int id, string expected, bool success = true)
+async Task RequestAndCheckAsync(string request, int id, string expected, bool success = true, string? forbidden = null)
 {
     byte[] data = Encoding.UTF8.GetBytes(request);
     await input.Writer.WriteAsync(Encoding.ASCII.GetBytes($"Content-Length: {data.Length}\r\n\r\n"));
@@ -138,6 +142,7 @@ async Task RequestAndCheckAsync(string request, int id, string expected, bool su
     }
     Console.WriteLine(received);
     if (!received.Contains(success ? "\"success\":true" : "\"success\":false") || !received.Contains(expected)) throw new Exception($"Request {id} failed.");
+    if (forbidden is not null && received.Contains(forbidden)) throw new Exception($"Request {id} leaked '{forbidden}': {received}");
     Console.WriteLine($"request {id} successful");
 }
 
